@@ -1,0 +1,18 @@
+{
+  "models": [
+    {"slot": 1, "family": "qwen3", "size": "14b", "seed": 1001},
+    {"slot": 2, "family": "qwen2.5", "size": "14b", "seed": 1004},
+    {"slot": 3, "family": "qwen3", "size": "8b", "seed": 1009},
+    {"slot": 4, "family": "phi4", "size": "mini", "seed": 1002},
+    {"slot": 5, "family": "qwen3", "size": "4b", "seed": 1010},
+    {"slot": 6, "family": "llama3", "size": "3b", "seed": 5003},
+    {"slot": 7, "family": "ettin-encoder", "size": "400m", "seed": 3001}
+  ],
+  "training": {
+    "epochs": 1,
+    "max_train_length": 256,
+    "max_inference_length": 512,
+    "test_example_repeats": 3
+  }
+}
+
