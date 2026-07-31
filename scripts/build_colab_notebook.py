@@ -57,21 +57,27 @@ print("GPU:", torch.cuda.get_device_name(0))"""
 %pip install -q -e ."""
     ),
     nbf.v4.new_code_cell(
-        """import importlib, site, subprocess, sys, torch
+        """import importlib, os, subprocess, sys, torch
 from pathlib import Path
 
-# Editable installs create a .pth file after this Colab kernel has started.
-# Verify a fresh process first, then activate the src tree in the current kernel.
+# Make the src tree visible to both this kernel and every subprocess. The
+# editable install remains useful, but Colab no longer depends on .pth reloads.
+src_path = str(Path(WORKDIR) / "src")
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+os.environ["PYTHONPATH"] = os.pathsep.join(
+    [src_path, os.environ.get("PYTHONPATH", "")]
+).rstrip(os.pathsep)
+importlib.invalidate_caches()
+
+import first_place
+print("first_place:", first_place.__file__)
 subprocess.run(
     [sys.executable, "-c", "import first_place; print(first_place.__file__)"],
     check=True,
 )
-site.addsitedir(str(Path(WORKDIR) / "src"))
-importlib.invalidate_caches()
-
 subprocess.run([sys.executable, "-m", "compileall", "-q", "src", "scripts"], check=True)
 subprocess.run([sys.executable, "-m", "pytest", "-q"], check=True)
-import first_place
 print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())"""
     ),
     nbf.v4.new_code_cell(
