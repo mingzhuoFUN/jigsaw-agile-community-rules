@@ -40,6 +40,17 @@ else:
 os.chdir(WORKDIR)"""
     ),
     nbf.v4.new_code_cell(
+        """# Run this gate before pip so Colab's CUDA-matched Torch is never replaced.
+import torch
+print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())
+if not torch.cuda.is_available() or "+cpu" in torch.__version__:
+    raise RuntimeError(
+        "GPU runtime is not active. In Colab select Runtime > Change runtime type > "
+        "Hardware accelerator > GPU, then disconnect/delete the runtime and start again."
+    )
+print("GPU:", torch.cuda.get_device_name(0))"""
+    ),
+    nbf.v4.new_code_cell(
         """%pip install -q -U pip
 %pip install -q -r requirements-colab.txt
 %pip install -q unsloth
@@ -61,9 +72,7 @@ importlib.invalidate_caches()
 subprocess.run([sys.executable, "-m", "compileall", "-q", "src", "scripts"], check=True)
 subprocess.run([sys.executable, "-m", "pytest", "-q"], check=True)
 import first_place
-print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())
-if not torch.cuda.is_available():
-    raise RuntimeError("Select a GPU runtime before training.")"""
+print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())"""
     ),
     nbf.v4.new_code_cell(
         """from google.colab import userdata
