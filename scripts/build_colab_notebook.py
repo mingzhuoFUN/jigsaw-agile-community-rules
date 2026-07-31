@@ -42,11 +42,22 @@ os.chdir(WORKDIR)"""
     nbf.v4.new_code_cell(
         """%pip install -q -U pip
 %pip install -q -r requirements-colab.txt
-%pip install -q -e .
-%pip install -q unsloth"""
+%pip install -q unsloth
+%pip install -q -e ."""
     ),
     nbf.v4.new_code_cell(
-        """import subprocess, sys, torch
+        """import importlib, site, subprocess, sys, torch
+from pathlib import Path
+
+# Editable installs create a .pth file after this Colab kernel has started.
+# Verify a fresh process first, then activate the src tree in the current kernel.
+subprocess.run(
+    [sys.executable, "-c", "import first_place; print(first_place.__file__)"],
+    check=True,
+)
+site.addsitedir(str(Path(WORKDIR) / "src"))
+importlib.invalidate_caches()
+
 subprocess.run([sys.executable, "-m", "compileall", "-q", "src", "scripts"], check=True)
 subprocess.run([sys.executable, "-m", "pytest", "-q"], check=True)
 import first_place
