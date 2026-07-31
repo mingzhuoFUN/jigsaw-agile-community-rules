@@ -6,9 +6,6 @@ assert torch.cuda.is_available()
 print("Visible device count:", torch.cuda.device_count())
 torch.cuda.set_device(0)            # 0 == the ONLY visible GPU in this process
 print("Using:", torch.cuda.get_device_name(0))
-os.environ.setdefault("HF_HUB_OFFLINE", "0")          # never hit the Hub
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "0")     # Transformers offline
-os.environ.setdefault("HF_DATASETS_OFFLINE", "0")      # Datasets offline
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1") # no telemetry
 
 import math
