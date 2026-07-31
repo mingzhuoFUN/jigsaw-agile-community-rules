@@ -75,12 +75,25 @@ import first_place
 print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())"""
     ),
     nbf.v4.new_code_cell(
-        """# Verify the first full-training model is reachable before starting a long job.
+        """# Optional but recommended for large-model downloads: add a read-only
+# Hugging Face token as the Colab Secret HF_TOKEN.
 import os
+from google.colab import userdata
+from google.colab.errors import SecretNotFoundError
 from huggingface_hub import model_info
 
 for variable in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE"):
     os.environ.pop(variable, None)
+
+try:
+    hf_token = userdata.get("HF_TOKEN")
+except SecretNotFoundError:
+    hf_token = None
+if hf_token:
+    os.environ["HF_TOKEN"] = hf_token
+    print("Authenticated Hugging Face downloads enabled.")
+else:
+    print("HF_TOKEN is not set; using anonymous downloads (more likely to be rate-limited).")
 
 model = model_info("unsloth/Qwen3-14B-unsloth-bnb-4bit")
 files = {item.rfilename for item in model.siblings}
