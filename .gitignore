@@ -2,6 +2,9 @@ __pycache__/
 .venv/
 *.pyc
 data/raw/*
+models/
+checkpoints/
+logs/
 outputs/*.csv
 outputs/*.json
 outputs/*.joblib
