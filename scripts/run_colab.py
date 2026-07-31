@@ -6,17 +6,36 @@ import argparse
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
+
+from huggingface_hub import snapshot_download
 
 
 FAITHFUL_SEQUENCE = [
-    ("train_qwen3_14b.py", "submission1.csv"),
-    ("train_qwen2.5_14b.py", "submission2.csv"),
-    ("train_qwen3_8b.py", "submission3.csv"),
-    ("train_llama3_8b.py", "submission4.csv"),
-    ("train_qwen3_4b.py", "submission5.csv"),
-    ("train_ettin_400m.py", "submission7.csv"),
+    ("train_qwen3_14b.py", "submission1.csv", "unsloth/Qwen3-14B-unsloth-bnb-4bit"),
+    ("train_qwen2.5_14b.py", "submission2.csv", "unsloth/Qwen2.5-14B-Instruct-bnb-4bit"),
+    ("train_qwen3_8b.py", "submission3.csv", "unsloth/Qwen3-8B-unsloth-bnb-4bit"),
+    ("train_llama3_8b.py", "submission4.csv", "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit"),
+    ("train_qwen3_4b.py", "submission5.csv", "unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit"),
+    ("train_ettin_400m.py", "submission7.csv", "jhu-clsp/ettin-encoder-400m"),
 ]
+
+
+def prefetch_model(repo_id: str, attempts: int = 4) -> None:
+    """Download to the shared HF cache with resumable retries."""
+    for attempt in range(1, attempts + 1):
+        try:
+            print(f"Prefetching {repo_id} (attempt {attempt}/{attempts})", flush=True)
+            path = snapshot_download(repo_id=repo_id, max_workers=4)
+            print(f"Cached {repo_id} at {path}", flush=True)
+            return
+        except Exception as exc:
+            if attempt == attempts:
+                raise
+            delay = 15 * attempt
+            print(f"Download interrupted: {exc}\nRetrying in {delay}s...", flush=True)
+            time.sleep(delay)
 
 
 def main() -> None:
@@ -42,11 +61,12 @@ def main() -> None:
         env.pop(variable, None)
 
     running = args.start_at is None
-    for script_name, submission_name in FAITHFUL_SEQUENCE:
+    for script_name, submission_name, model_id in FAITHFUL_SEQUENCE:
         if script_name == args.start_at:
             running = True
         if not running:
             continue
+        prefetch_model(model_id)
         log_path = args.output_dir / f"{Path(script_name).stem}.log"
         print(f"\n=== {script_name} ===", flush=True)
         with log_path.open("w", encoding="utf-8") as log:
