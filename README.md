@@ -2,6 +2,8 @@
 
 Kaggle: https://www.kaggle.com/competitions/jigsaw-agile-community-rules
 
+[在 Google Colab 中打开](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/first_place_reproduction_colab.ipynb)
+
 ## 任务
 
 给定 Reddit 评论 `body`、社区 `subreddit`、待判断的社区规则 `rule`，以及该规则下的正负示例，预测这条评论是否违反该规则。目标列是 `rule_violation`，提交文件需要输出每个 `row_id` 的违规概率。
@@ -79,7 +81,7 @@ kaggle competitions submit -c jigsaw-agile-community-rules -f outputs/submission
 4. Few-shot/LLM 路线：把正负例作为上下文，做零样本或小样本推理，再校准概率。
 5. 集成：TF-IDF、Transformer、规则关键词、相似度模型做 rank averaging。
 
-## 第一名方案复现
+## 第一名方案完整复现
 
 参考 notebook：`1st-place-code (1).ipynb`。它不是单模型方案，而是 6 个生成式
 LoRA 模型与 1 个 Ettin-400M 编码器的集成。训练时把测试集提供的正反例转成带标签
@@ -87,18 +89,32 @@ LoRA 模型与 1 个 Ettin-400M 编码器的集成。训练时把测试集提供
 
 项目化复现代码位于：
 
+- `notebooks/first_place_reproduction_colab.ipynb`：Colab 完整训练入口。
+- `REPRODUCTION.md`：参考版本、实际启用模型、参数和已知歧义。
+- `reference/notebook_cells/`：原 notebook 中全部 21 个 `%%writefile` 脚本的冻结副本。
+- `scripts/winner/`：仅修改路径和在线模型来源的可运行脚本。
+- `scripts/run_colab.py`：在单 GPU Colab 上顺序执行原方案实际启用的 6 个模型。
 - `configs/first_place.json`：原方案的模型矩阵与关键参数。
 - `src/first_place/data.py`：提示词和训练样本构造。
 - `src/first_place/ensemble.py`：按 `row_id` 对齐并加权融合各模型预测。
 - `tests/test_first_place.py`：数据增强和融合逻辑的回归测试。
 
-第一名原配置需要双 GPU，并包含 14B 模型。8GB 单卡建议先运行 Ettin 编码器路径，
-再尝试 Qwen3-4B 的 4-bit LoRA；完整 7 模型结果应在 Kaggle 双 GPU 或云 GPU 环境运行。
+Colab 使用步骤：
+
+1. 打开上面的 Colab 链接并选择 GPU 运行时，14B 模型建议 A100/高内存实例。
+2. 在 Colab Secrets 添加 `GITHUB_TOKEN`，用于克隆当前私有仓库。
+3. 添加 `KAGGLE_API_TOKEN`，并确保 Kaggle 账号已接受竞赛规则。
+4. 依次运行单元格；smoke test 通过后将 `RUN_FULL_TRAINING` 改为 `True`。
+5. 日志、各模型预测与最终 `submission.csv` 会写入 Google Drive。
+
+Colab 单 GPU 入口按顺序执行模型，只改变原双 GPU notebook 的并发调度，不修改模型、
+训练数据、随机种子或超参数。原 notebook 实际启用 6 个预测模型；Phi-4 和
+Llama-3.2-3B 虽有定义但在编排中被注释，详情见 `REPRODUCTION.md`。
 
 融合已有预测：
 
 ```powershell
-python -m src.first_place.ensemble `
+python -m first_place.ensemble `
   --input-dir outputs/first_place `
   --output outputs/submission_first_place.csv
 ```

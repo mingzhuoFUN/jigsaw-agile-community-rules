@@ -1,0 +1,107 @@
+[
+  {
+    "cell": 1,
+    "original_name": "train_qwen3_14b.py",
+    "extracted_path": "reference/notebook_cells/cell_01_train_qwen3_14b.py"
+  },
+  {
+    "cell": 2,
+    "original_name": "train_phi4.py",
+    "extracted_path": "reference/notebook_cells/cell_02_train_phi4.py"
+  },
+  {
+    "cell": 3,
+    "original_name": "train_qwen2.5_14b.py",
+    "extracted_path": "reference/notebook_cells/cell_03_train_qwen2.5_14b.py"
+  },
+  {
+    "cell": 4,
+    "original_name": "train_qwen3_8b.py",
+    "extracted_path": "reference/notebook_cells/cell_04_train_qwen3_8b.py"
+  },
+  {
+    "cell": 5,
+    "original_name": "train_qwen3_4b.py",
+    "extracted_path": "reference/notebook_cells/cell_05_train_qwen3_4b.py"
+  },
+  {
+    "cell": 6,
+    "original_name": "train_llama3_8b.py",
+    "extracted_path": "reference/notebook_cells/cell_06_train_llama3_8b.py"
+  },
+  {
+    "cell": 7,
+    "original_name": "train_llama3_3b.py",
+    "extracted_path": "reference/notebook_cells/cell_07_train_llama3_3b.py"
+  },
+  {
+    "cell": 8,
+    "original_name": "train_ettin_400m.py",
+    "extracted_path": "reference/notebook_cells/cell_08_train_ettin_400m.py"
+  },
+  {
+    "cell": 9,
+    "original_name": "train.py",
+    "extracted_path": "reference/notebook_cells/cell_09_train.py"
+  },
+  {
+    "cell": 12,
+    "original_name": "constants.py",
+    "extracted_path": "reference/notebook_cells/cell_12_constants.py"
+  },
+  {
+    "cell": 13,
+    "original_name": "utils.py",
+    "extracted_path": "reference/notebook_cells/cell_13_utils.py"
+  },
+  {
+    "cell": 14,
+    "original_name": "train_fp16.py",
+    "extracted_path": "reference/notebook_cells/cell_14_train_fp16.py"
+  },
+  {
+    "cell": 16,
+    "original_name": "inference_fp16_ddp.py",
+    "extracted_path": "reference/notebook_cells/cell_16_inference_fp16_ddp.py"
+  },
+  {
+    "cell": 18,
+    "original_name": "constants.py",
+    "extracted_path": "reference/notebook_cells/cell_18_constants.py"
+  },
+  {
+    "cell": 19,
+    "original_name": "utils.py",
+    "extracted_path": "reference/notebook_cells/cell_19_utils.py"
+  },
+  {
+    "cell": 20,
+    "original_name": "train_fp16.py",
+    "extracted_path": "reference/notebook_cells/cell_20_train_fp16.py"
+  },
+  {
+    "cell": 22,
+    "original_name": "inference_fp16_ddp.py",
+    "extracted_path": "reference/notebook_cells/cell_22_inference_fp16_ddp.py"
+  },
+  {
+    "cell": 24,
+    "original_name": "constants.py",
+    "extracted_path": "reference/notebook_cells/cell_24_constants.py"
+  },
+  {
+    "cell": 25,
+    "original_name": "utils.py",
+    "extracted_path": "reference/notebook_cells/cell_25_utils.py"
+  },
+  {
+    "cell": 26,
+    "original_name": "train_deberta_fp16.py",
+    "extracted_path": "reference/notebook_cells/cell_26_train_deberta_fp16.py"
+  },
+  {
+    "cell": 28,
+    "original_name": "inference_deberta_fp16_ddp.py",
+    "extracted_path": "reference/notebook_cells/cell_28_inference_deberta_fp16_ddp.py"
+  }
+]
