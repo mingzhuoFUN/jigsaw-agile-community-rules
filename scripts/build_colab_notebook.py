@@ -75,6 +75,19 @@ import first_place
 print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())"""
     ),
     nbf.v4.new_code_cell(
+        """# Verify the first full-training model is reachable before starting a long job.
+import os
+from huggingface_hub import model_info
+
+for variable in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE"):
+    os.environ.pop(variable, None)
+
+model = model_info("unsloth/Qwen3-14B-unsloth-bnb-4bit")
+files = {item.rfilename for item in model.siblings}
+assert "config.json" in files and "model.safetensors.index.json" in files
+print("Hugging Face model reachable:", model.id, model.sha[:8])"""
+    ),
+    nbf.v4.new_code_cell(
         """from google.colab import userdata
 from pathlib import Path
 import os, subprocess, zipfile
