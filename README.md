@@ -78,3 +78,30 @@ kaggle competitions submit -c jigsaw-agile-community-rules -f outputs/submission
 3. Transformer baseline：使用 DeBERTa/MiniLM 做 pair classification。
 4. Few-shot/LLM 路线：把正负例作为上下文，做零样本或小样本推理，再校准概率。
 5. 集成：TF-IDF、Transformer、规则关键词、相似度模型做 rank averaging。
+
+## 第一名方案复现
+
+参考 notebook：`1st-place-code (1).ipynb`。它不是单模型方案，而是 6 个生成式
+LoRA 模型与 1 个 Ettin-400M 编码器的集成。训练时把测试集提供的正反例转成带标签
+样本，并重复 3 次以增强未见规则上的泛化。
+
+项目化复现代码位于：
+
+- `configs/first_place.json`：原方案的模型矩阵与关键参数。
+- `src/first_place/data.py`：提示词和训练样本构造。
+- `src/first_place/ensemble.py`：按 `row_id` 对齐并加权融合各模型预测。
+- `tests/test_first_place.py`：数据增强和融合逻辑的回归测试。
+
+第一名原配置需要双 GPU，并包含 14B 模型。8GB 单卡建议先运行 Ettin 编码器路径，
+再尝试 Qwen3-4B 的 4-bit LoRA；完整 7 模型结果应在 Kaggle 双 GPU 或云 GPU 环境运行。
+
+融合已有预测：
+
+```powershell
+python -m src.first_place.ensemble `
+  --input-dir outputs/first_place `
+  --output outputs/submission_first_place.csv
+```
+
+notebook 原始融合权重之和为 `1.1`，项目代码会自动归一化，同时允许只融合当前已经
+完成的模型，避免输出概率超出预期尺度。
