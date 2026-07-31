@@ -1,0 +1,16 @@
+# Colab GPU environment for the faithful reference scripts.
+torch>=2.6
+torchvision
+transformers>=4.51
+datasets>=3.5
+accelerate>=1.6
+peft>=0.15
+trl>=0.17
+bitsandbytes>=0.45
+sentencepiece
+protobuf
+kaggle>=1.6
+pytest>=8
+
+# Unsloth is installed separately in the Colab notebook so its matching
+# Torch/CUDA wheel can be selected for the active runtime.

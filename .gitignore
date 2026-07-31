@@ -8,3 +8,11 @@ logs/
 outputs/*.csv
 outputs/*.json
 outputs/*.joblib
+*.log
+*.safetensors
+*.bin
+*.pt
+*.pth
+kaggle.json
+.env
+*.egg-info/
