@@ -79,7 +79,6 @@ print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())"""
 # Hugging Face token as the Colab Secret HF_TOKEN.
 import os
 from google.colab import userdata
-from google.colab.errors import SecretNotFoundError
 from huggingface_hub import model_info
 
 for variable in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE"):
@@ -87,7 +86,7 @@ for variable in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE"
 
 try:
     hf_token = userdata.get("HF_TOKEN")
-except SecretNotFoundError:
+except Exception:
     hf_token = None
 if hf_token:
     os.environ["HF_TOKEN"] = hf_token
