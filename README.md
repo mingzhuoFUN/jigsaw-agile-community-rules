@@ -1,4 +1,4 @@
-# Jigsaw Agile Community Rules 复现笔记
+# Jigsaw Agile Community Rules
 
 Kaggle: https://www.kaggle.com/competitions/jigsaw-agile-community-rules
 
