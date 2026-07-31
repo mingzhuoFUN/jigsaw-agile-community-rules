@@ -1,6 +1,5 @@
-# Colab GPU environment for the faithful reference scripts.
-torch>=2.6
-torchvision
+# Colab provides a CUDA-matched Torch build. Do not reinstall torch/torchvision
+# from PyPI here, because that can replace it with a CPU-only wheel.
 transformers>=4.51
 datasets>=3.5
 accelerate>=1.6
