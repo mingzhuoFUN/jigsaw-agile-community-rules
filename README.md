@@ -102,10 +102,9 @@ LoRA 模型与 1 个 Ettin-400M 编码器的集成。训练时把测试集提供
 Colab 使用步骤：
 
 1. 打开上面的 Colab 链接并选择 GPU 运行时，14B 模型建议 A100/高内存实例。
-2. 在 Colab Secrets 添加 `GITHUB_TOKEN`，用于克隆当前私有仓库。
-3. 添加 `KAGGLE_API_TOKEN`，并确保 Kaggle 账号已接受竞赛规则。
-4. 依次运行单元格；smoke test 通过后将 `RUN_FULL_TRAINING` 改为 `True`。
-5. 日志、各模型预测与最终 `submission.csv` 会写入 Google Drive。
+2. 在 Colab Secrets 添加 `KAGGLE_API_TOKEN`，并确保 Kaggle 账号已接受竞赛规则。
+3. 依次运行单元格；smoke test 通过后将 `RUN_FULL_TRAINING` 改为 `True`。
+4. 日志、各模型预测与最终 `submission.csv` 会写入 Google Drive。
 
 Colab 单 GPU 入口按顺序执行模型，只改变原双 GPU notebook 的并发调度，不修改模型、
 训练数据、随机种子或超参数。原 notebook 实际启用 6 个预测模型；Phi-4 和

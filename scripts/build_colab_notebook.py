@@ -15,9 +15,8 @@ nb["cells"] = [
 Faithful Colab entrypoint for the supplied winning notebook. Before running:
 
 1. Select a GPU runtime.
-2. Add `GITHUB_TOKEN` to Colab Secrets because the repository is private.
-3. Add `KAGGLE_API_TOKEN` to Colab Secrets and accept the competition rules.
-4. Set `RUN_FULL_TRAINING = True` only after the smoke checks pass.
+2. Add `KAGGLE_API_TOKEN` to Colab Secrets and accept the competition rules.
+3. Set `RUN_FULL_TRAINING = True` only after the smoke checks pass.
 
 Large models may require an A100/high-memory runtime. The runner is sequential, so it also
 works on a single-GPU Colab runtime without changing model semantics."""
@@ -30,14 +29,9 @@ DRIVE_ARTIFACT_DIR = "/content/drive/MyDrive/jigsaw-first-place"
 RUN_FULL_TRAINING = False"""
     ),
     nbf.v4.new_code_cell(
-        """from google.colab import userdata
-from urllib.parse import quote
-import os, shutil, subprocess
+        """import os, shutil, subprocess
 
-github_token = userdata.get("GITHUB_TOKEN")
-if not github_token:
-    raise ValueError("Add GITHUB_TOKEN in Colab Secrets; the repository is private.")
-clone_url = f"https://x-access-token:{quote(github_token, safe='')}@github.com/{REPOSITORY}.git"
+clone_url = f"https://github.com/{REPOSITORY}.git"
 if os.path.isdir(f"{WORKDIR}/.git"):
     subprocess.run(["git", "-C", WORKDIR, "pull", "--ff-only"], check=True)
 else:
