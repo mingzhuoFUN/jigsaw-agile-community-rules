@@ -2,7 +2,9 @@
 
 Kaggle: https://www.kaggle.com/competitions/jigsaw-agile-community-rules
 
-[在 Google Colab 中打开](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/first_place_reproduction_colab.ipynb)
+[运行已验证的单模型 Colab](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb)
+
+[打开第一名完整方案 Colab](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/first_place_reproduction_colab.ipynb)
 
 ## 任务
 
@@ -120,3 +122,23 @@ python -m first_place.ensemble `
 
 notebook 原始融合权重之和为 `1.1`，项目代码会自动归一化，同时允许只融合当前已经
 完成的模型，避免输出概率超出预期尺度。
+
+## 推荐学习路径：先跑通单模型
+
+`notebooks/verified_ettin_colab.ipynb` 是当前推荐入口。它使用第一名方案中的
+Ettin-400M，并验证完整链路：
+
+```text
+GitHub → Colab → Hugging Face → Kaggle → GPU 微调 → 推理 → Google Drive
+```
+
+该入口固定 Hugging Face 模型 revision 和关键依赖，先进行 32 条样本 smoke
+training，再执行完整训练。Google Drive 中会保留：
+
+- `model/`：微调后的模型和 tokenizer；
+- `training.log`：实时训练日志；
+- `run_manifest.json`：模型 ID、revision、时间和数据规模；
+- `submission7.csv`：可提交预测。
+
+六模型 notebook 保留用于完整学习第一名思路，但不再作为验证 GitHub/Colab 工程
+链路的前置条件。

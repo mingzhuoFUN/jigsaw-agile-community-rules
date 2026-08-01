@@ -4,6 +4,7 @@ import pandas as pd
 
 from src.first_place.data import build_training_frame
 from src.first_place.ensemble import blend
+from scripts.run_verified_ettin import validate_submission
 
 
 def test_training_frame_repeats_test_examples(tmp_path: Path) -> None:
@@ -34,3 +35,14 @@ def test_blend_normalizes_notebook_weights(tmp_path: Path) -> None:
     )
     assert result.loc[0, "rule_violation"] == 0.5
 
+
+def test_verified_submission_contract(tmp_path: Path) -> None:
+    pd.DataFrame({"row_id": [1, 2], "rule_violation": [0.0, 0.0]}).to_csv(
+        tmp_path / "sample_submission.csv", index=False
+    )
+    output = tmp_path / "submission7.csv"
+    pd.DataFrame({"row_id": [2, 1], "rule_violation": [0.8, 0.2]}).to_csv(
+        output, index=False
+    )
+    result = validate_submission(output, tmp_path)
+    assert len(result) == 2
