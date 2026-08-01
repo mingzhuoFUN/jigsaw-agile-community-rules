@@ -1,0 +1,6 @@
+# Keep Colab's CUDA-matched torch build. These versions match the supplied
+# first-place notebook where applicable.
+transformers==4.56.2
+huggingface_hub>=0.34,<1.0
+kaggle>=1.6,<2
+pytest>=8,<9
