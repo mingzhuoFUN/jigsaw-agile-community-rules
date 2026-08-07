@@ -1,7 +1,6 @@
-# Jigsaw Agile Community Rules：高分方案单模型复现
+# Jigsaw Agile Community Rules：单模型训练与 Colab 闭环
 
-本项目以竞赛第一名 notebook `1st-place-code (1).ipynb` 为参考，保留其核心思路，
-并提供一条适合 Google Colab 验证的单模型闭环：
+本项目围绕规则感知的社区评论分类任务，提供一条适合 Google Colab 验证的单模型闭环：
 
 ```text
 GitHub 代码
@@ -15,10 +14,8 @@ GitHub 代码
   → 模型、日志和预测保存到 Google Drive
 ```
 
-[在 Colab 中运行已验证的 Ettin 单模型闭环](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/agent/winner-style-colab-pipeline/notebooks/verified_ettin_colab.ipynb)
-
-多模型代码和原始 notebook 仍保留在仓库中，用于学习第一名方案；但证明工程链路可运行
-不要求在 Colab 中重复训练全部 14B/8B/4B 模型。
+当前推荐入口使用单个 Ettin-400M 模型验证完整训练链路。项目不要求在 Colab 中训练
+多个 14B/8B/4B 模型，也可以在闭环跑通后按需要扩展其他 Hugging Face 模型。
 
 | 项目 | 内容 |
 |---|---|
@@ -43,9 +40,9 @@ GitHub 代码
 固定规则类别，而必须学习“规则文本与评论内容是否匹配”。测试集中的正负示例是适应
 新规则的重要监督信息。
 
-## 第一名方案的核心思路
+## 项目的核心训练思路
 
-参考 notebook 使用多个生成式 LLM 与一个编码器模型进行融合：
+项目同时保留生成式模型和编码器模型两种训练路线：
 
 1. 把原始训练集作为基础监督样本。
 2. 把测试集给出的正例标记为 `1`、负例标记为 `0`。
@@ -54,9 +51,8 @@ GitHub 代码
 5. 推理后在每条规则内部进行 rank normalization。
 6. 融合多个结构、参数规模和随机种子的模型。
 
-本仓库的 Colab 主入口选择其中的 `jhu-clsp/ettin-encoder-400m`。这样保留了高分方案的
-规则感知数据构造、目标域示例增强、分类训练和按规则排序，同时把验证成本控制在单 GPU
-可接受范围内。
+Colab 主入口选择 `jhu-clsp/ettin-encoder-400m`，以规则感知数据构造、目标域示例增强、
+分类训练和按规则排序为核心，同时把验证成本控制在单 GPU 可接受范围内。
 
 ## 如何构造干净训练数据
 
@@ -122,12 +118,9 @@ negative_example_1/2 → body，rule_violation = 0
 body, rule, rule_violation, source
 ```
 
-然后重复目标规则示例。默认 `example_repeats=2`，这与第一名 notebook 的可执行代码一致：
-每条唯一测试示例初始出现一次，再追加一次。
-
-原 notebook 的注释声称总共出现 3 次，但代码实际只产生 2 次。本仓库以真实执行行为为
-忠实复现默认值；如果需要研究 3 次重复，可以显式设置 `example_repeats=3`，但应把它
-视为独立实验。
+然后重复目标规则示例。默认 `example_repeats=2`：每条唯一测试示例初始出现一次，
+再追加一次。这个参数用于提高目标规则示例在训练数据中的权重；如果需要研究不同增强
+强度，可以显式设置 `example_repeats=1`、`3` 或其他正整数，并分别记录验证结果。
 
 ### 6. 固定随机打乱
 
@@ -142,7 +135,7 @@ python -c "from pathlib import Path; from first_place.data import build_training
 
 ## 训练数据最终是什么格式
 
-高分代码并不是直接把整行 CSV 交给模型。它先把不同来源的数据统一为一个最小监督格式，
+训练代码并不是直接把整行 CSV 交给模型。它先把不同来源的数据统一为一个最小监督格式，
 再根据模型类型转换成聊天 SFT 数据或分类数据。
 
 ### 原始训练行
@@ -153,7 +146,7 @@ python -c "from pathlib import Path; from first_place.data import build_training
 |---|---|---:|---|---|---|
 | `Visit my shop and use code SAVE20.` | `No Advertising` | 1 | `example_forum` | `Buy this product here.` | `I bought this product yesterday.` |
 
-虽然原始训练文件还包含 `subreddit` 和正负例字段，高分训练代码实际只选取：
+虽然原始训练文件还包含 `subreddit` 和正负例字段，当前训练代码实际只选取：
 
 ```text
 body, rule, rule_violation
@@ -170,7 +163,7 @@ body, rule, rule_violation
 }
 ```
 
-`subreddit` 没有进入高分模型的最终训练文本，正负例也不会和当前评论一起拼成一个超长
+`subreddit` 没有进入当前模型的最终训练文本，正负例也不会和当前评论一起拼成一个超长
 prompt。它们会被拆成独立的带标签样本。
 
 ### 测试正负例如何变成训练行
@@ -189,7 +182,7 @@ prompt。它们会被拆成独立的带标签样本。
 }
 ```
 
-高分代码不会使用这行的 `body` 作为有标签训练数据，因为它的真实标签未知。它只展开
+训练代码不会使用这行的 `body` 作为有标签训练数据，因为它的真实标签未知。它只展开
 已经由比赛提供了语义极性的四个示例：
 
 | body | rule | rule_violation | source |
@@ -232,7 +225,7 @@ test.csv                              │
           ↓
 按 body/rule/label/source 去重
           ↓
-重复 test_examples（忠实默认总共出现 2 次）
+重复 test_examples（默认总共出现 2 次）
           ↓
 固定随机种子打乱
           ↓
@@ -247,15 +240,15 @@ demonstrations 转换成目标域监督数据，让模型学到测试阶段的�
 | 来源 | 行数 | 说明 |
 |---|---:|---|
 | `train` | 1884 | 原训练数据清洗、去重后的唯一行 |
-| `test_examples` | 76 | 唯一正负示例按忠实配置重复后的行 |
+| `test_examples` | 76 | 唯一正负示例按默认配置重复后的行 |
 | 总计 | 1960 | 实际送入训练流程的行数 |
 
 这些数字依赖当前竞赛文件；更换数据版本时，以 `run_manifest.json` 中记录的统计为准。
 
-## 高分生成式模型如何进行 SFT
+## 生成式模型如何进行 SFT
 
-第一名方案中的 Qwen、Llama 等生成式模型采用 Supervised Fine-Tuning。这里的 SFT 目标
-非常窄：给模型一条评论和一条规则，只学习输出 `Yes` 或 `No`。
+项目中的 Qwen、Llama 等生成式模型采用 Supervised Fine-Tuning。这里的 SFT 目标非常窄：
+给模型一条评论和一条规则，只学习输出 `Yes` 或 `No`。
 
 ### 1. 标签转换为 completion
 
@@ -307,7 +300,7 @@ body, rule, completion
 
 ### 3. 使用模型原生 chat template 序列化
 
-高分代码调用 tokenizer 的 `apply_chat_template`，把结构化消息转换成模型真正看到的
+训练代码调用 tokenizer 的 `apply_chat_template`，把结构化消息转换成模型真正看到的
 token 序列。以 Qwen 风格表示，逻辑结构大致是：
 
 ```text
@@ -328,13 +321,13 @@ Yes
 实际特殊 token 由所选模型的 tokenizer 决定，不应手工把上面的展示标签写进数据。
 Qwen3 路径还设置 `enable_thinking=False`，避免模型学习或生成思维链，只训练直接回答。
 
-原代码在 chat template 输出后使用 `[:-11]` 去除末尾模板内容。这是对特定 tokenizer
-输出的实现细节，保留在冻结参考和生成式 runnable 脚本中；如果以后更换 tokenizer，
-必须重新检查，不能假设固定截取 11 个字符始终正确。
+当前生成式训练代码在 chat template 输出后使用 `[:-11]` 去除末尾模板内容。这是针对
+当前 tokenizer 输出的实现细节；如果以后更换 tokenizer，必须重新检查，不能假设固定
+截取 11 个字符始终正确。
 
 ### 4. 只对 assistant 回答计算 loss
 
-高分代码使用 `train_on_responses_only`。system prompt 和 user 中的评论、规则用于提供
+训练代码使用 `train_on_responses_only`。system prompt 和 user 中的评论、规则用于提供
 上下文，但它们对应的 label 会被 mask 为 `-100`，不参与交叉熵损失。
 
 可以把训练目标理解为：
@@ -357,7 +350,7 @@ P("No"  | system prompt, comment, rule)
 
 ### 5. LoRA 与 SFT 参数
 
-以高分 Qwen3-14B 脚本为例：
+以项目中的 Qwen3-14B 配置为例：
 
 | 参数 | 设置 |
 |---|---|
@@ -386,7 +379,7 @@ P("No"  | system prompt, comment, rule)
 
 ### 6. SFT 后如何得到分类分数
 
-推理阶段并不要求模型真正生成一整段回答。高分代码取 assistant 第一个输出位置的
+推理阶段并不要求模型真正生成一整段回答。推理代码取 assistant 第一个输出位置的
 vocabulary logits，收集多个肯定和否定写法的首 token：
 
 ```text
@@ -397,7 +390,7 @@ vocabulary logits，收集多个肯定和否定写法的首 token：
 然后只在这些候选 token 上计算归一化分数，得到 `p_yes`。最后再在每条规则内部进行
 rank normalization，生成提交分数。
 
-因此生成式高分链路可以概括为：
+因此生成式训练链路可以概括为：
 
 ```text
 二元标签
@@ -412,12 +405,12 @@ rank normalization，生成提交分数。
 
 需要特别区分：以上是 Qwen/Llama 的生成式 SFT。当前推荐 Colab 使用的 Ettin 是
 encoder sequence classification，采用 BCE loss，并不执行聊天 SFT。两者共享相同的
-高分数据构造和按规则排名思路，但模型训练目标不同。
+数据构造和按规则排名逻辑，但模型训练目标不同。
 
 ## Ettin 单模型训练方法
 
-训练脚本位于
-[`scripts/winner/train_ettin_400m.py`](scripts/winner/train_ettin_400m.py)。
+Ettin 训练由单模型 runner 调用，统一入口位于
+[`scripts/run_verified_ettin.py`](scripts/run_verified_ettin.py)。
 
 ### 输入表示
 
@@ -500,7 +493,7 @@ MyDrive/jigsaw-verified-ettin/
 
 - `model/`：微调后的模型和 tokenizer；
 - `training.log`：训练日志；
-- `run_manifest.json`：GitHub/Hugging Face 复现信息和数据规模；
+- `run_manifest.json`：GitHub commit、Hugging Face 模型版本和数据规模；
 - `submission7.csv`：经过校验的提交文件。
 
 如果只想验证链路，可把 notebook 中的 `RUN_FULL_TRAINING` 改为 `False`。32 行 smoke test
@@ -547,20 +540,18 @@ python scripts/run_verified_ettin.py `
 ## 仓库结构
 
 ```text
-1st-place-code (1).ipynb          第一名原始 notebook
-reference/notebook_cells/         原 notebook 脚本冻结副本
-scripts/winner/                   适配在线模型和可移植路径的训练脚本
 scripts/run_verified_ettin.py     单模型闭环 runner
 notebooks/verified_ettin_colab.ipynb
 src/first_place/data.py           统一数据清洗和构造
-src/first_place/ensemble.py       多模型预测融合参考
+src/first_place/ensemble.py       可选的多模型预测融合
+src/first_place/validation.py     submission 格式与数值校验
 tests/                            数据、提交和融合回归测试
-REPRODUCTION.md                   原始方案与适配差异
 ```
 
-## 复现边界
+## 项目范围
 
-- 单模型 Colab 用于证明完整工程和训练思路可以运行，不声称等同于第一名多模型成绩。
-- 第一名 notebook 没有提供可直接复核的本地 OOF 或 leaderboard 分数。
+- 单模型 Colab 用于验证完整工程和训练思路，不代表多模型集成的最终效果。
+- 当前仓库不声明未经同一评估环境验证的排行榜成绩。
 - 只有在相同数据、指标和竞赛环境中提交后，才能进行可靠分数比较。
-- `reference/notebook_cells/` 保持冻结；环境适配和改进只发生在 runnable 代码中。
+- 模型、依赖、数据统计和 GitHub commit 会写入运行清单，便于追踪每次实验。
+
