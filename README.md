@@ -140,6 +140,280 @@ pip install -e .
 python -c "from pathlib import Path; from first_place.data import build_training_frame; print(build_training_frame(Path('data/raw')).groupby(['source','rule_violation']).size())"
 ```
 
+## 训练数据最终是什么格式
+
+高分代码并不是直接把整行 CSV 交给模型。它先把不同来源的数据统一为一个最小监督格式，
+再根据模型类型转换成聊天 SFT 数据或分类数据。
+
+### 原始训练行
+
+下面是结构示例，文本仅用于说明格式：
+
+| body | rule | rule_violation | subreddit | positive_example_1 | negative_example_1 |
+|---|---|---:|---|---|---|
+| `Visit my shop and use code SAVE20.` | `No Advertising` | 1 | `example_forum` | `Buy this product here.` | `I bought this product yesterday.` |
+
+虽然原始训练文件还包含 `subreddit` 和正负例字段，高分训练代码实际只选取：
+
+```text
+body, rule, rule_violation
+```
+
+得到的基础监督样本是：
+
+```json
+{
+  "body": "Visit my shop and use code SAVE20.",
+  "rule": "No Advertising",
+  "rule_violation": 1,
+  "source": "train"
+}
+```
+
+`subreddit` 没有进入高分模型的最终训练文本，正负例也不会和当前评论一起拼成一个超长
+prompt。它们会被拆成独立的带标签样本。
+
+### 测试正负例如何变成训练行
+
+假设测试集的一行是：
+
+```json
+{
+  "row_id": 18,
+  "body": "待预测的评论",
+  "rule": "No Advertising",
+  "positive_example_1": "Buy my course at this link.",
+  "positive_example_2": "Use my referral code ABC.",
+  "negative_example_1": "I disliked the course.",
+  "negative_example_2": "Where can I read the rules?"
+}
+```
+
+高分代码不会使用这行的 `body` 作为有标签训练数据，因为它的真实标签未知。它只展开
+已经由比赛提供了语义极性的四个示例：
+
+| body | rule | rule_violation | source |
+|---|---|---:|---|
+| `Buy my course at this link.` | `No Advertising` | 1 | `test_examples` |
+| `Use my referral code ABC.` | `No Advertising` | 1 | `test_examples` |
+| `I disliked the course.` | `No Advertising` | 0 | `test_examples` |
+| `Where can I read the rules?` | `No Advertising` | 0 | `test_examples` |
+
+因此，构造后的统一训练表只有四个字段：
+
+```text
+body: string
+rule: string
+rule_violation: 0 或 1
+source: train 或 test_examples
+```
+
+`source` 只用于去重、重复采样和统计，送入模型前会删除。
+
+### 完整构造顺序
+
+对每份数据严格按以下顺序处理：
+
+```text
+train.csv
+  └─ 选择 body/rule/rule_violation
+  └─ source = "train"
+                                      ┐
+test.csv                              │
+  ├─ positive_example_1 → label 1     │
+  ├─ positive_example_2 → label 1     ├─ 合并
+  ├─ negative_example_1 → label 0     │
+  └─ negative_example_2 → label 0     │
+     source = "test_examples"         ┘
+          ↓
+字段和标签校验
+          ↓
+保守文本清洗
+          ↓
+按 body/rule/label/source 去重
+          ↓
+重复 test_examples（忠实默认总共出现 2 次）
+          ↓
+固定随机种子打乱
+          ↓
+统一监督训练表
+```
+
+这里利用了测试集公开示例，但没有使用待预测评论的未知标签。其意义是把比赛提供的
+demonstrations 转换成目标域监督数据，让模型学到测试阶段的新规则。
+
+本仓库当前数据经过处理后得到：
+
+| 来源 | 行数 | 说明 |
+|---|---:|---|
+| `train` | 1884 | 原训练数据清洗、去重后的唯一行 |
+| `test_examples` | 76 | 唯一正负示例按忠实配置重复后的行 |
+| 总计 | 1960 | 实际送入训练流程的行数 |
+
+这些数字依赖当前竞赛文件；更换数据版本时，以 `run_manifest.json` 中记录的统计为准。
+
+## 高分生成式模型如何进行 SFT
+
+第一名方案中的 Qwen、Llama 等生成式模型采用 Supervised Fine-Tuning。这里的 SFT 目标
+非常窄：给模型一条评论和一条规则，只学习输出 `Yes` 或 `No`。
+
+### 1. 标签转换为 completion
+
+统一训练表中的二元标签被转换为文本答案：
+
+```text
+rule_violation = 1 → completion = "Yes"
+rule_violation = 0 → completion = "No"
+```
+
+送入 SFT 构造器的表最终是：
+
+```text
+body, rule, completion
+```
+
+示例：
+
+```json
+{
+  "body": "Visit my shop and use code SAVE20.",
+  "rule": "No Advertising",
+  "completion": "Yes"
+}
+```
+
+### 2. 转换成三轮聊天消息
+
+每条样本转换成一个 system/user/assistant conversation：
+
+```json
+[
+  {
+    "role": "system",
+    "content": "Reddit moderation: Does the comment violate the rule? Answer 'Yes' or 'No' only."
+  },
+  {
+    "role": "user",
+    "content": "Comment: Visit my shop and use code SAVE20.\n\nrule: No Advertising"
+  },
+  {
+    "role": "assistant",
+    "content": "Yes"
+  }
+]
+```
+
+负样本的唯一结构差别是 assistant 内容为 `No`。
+
+### 3. 使用模型原生 chat template 序列化
+
+高分代码调用 tokenizer 的 `apply_chat_template`，把结构化消息转换成模型真正看到的
+token 序列。以 Qwen 风格表示，逻辑结构大致是：
+
+```text
+<system>
+Reddit moderation: Does the comment violate the rule?
+Answer 'Yes' or 'No' only.
+</system>
+<user>
+Comment: Visit my shop and use code SAVE20.
+
+rule: No Advertising
+</user>
+<assistant>
+Yes
+</assistant>
+```
+
+实际特殊 token 由所选模型的 tokenizer 决定，不应手工把上面的展示标签写进数据。
+Qwen3 路径还设置 `enable_thinking=False`，避免模型学习或生成思维链，只训练直接回答。
+
+原代码在 chat template 输出后使用 `[:-11]` 去除末尾模板内容。这是对特定 tokenizer
+输出的实现细节，保留在冻结参考和生成式 runnable 脚本中；如果以后更换 tokenizer，
+必须重新检查，不能假设固定截取 11 个字符始终正确。
+
+### 4. 只对 assistant 回答计算 loss
+
+高分代码使用 `train_on_responses_only`。system prompt 和 user 中的评论、规则用于提供
+上下文，但它们对应的 label 会被 mask 为 `-100`，不参与交叉熵损失。
+
+可以把训练目标理解为：
+
+```text
+system tokens      → 只作为输入，不计算 loss
+user tokens        → 只作为输入，不计算 loss
+assistant prefix   → 定位回答区间
+Yes/No tokens      → 计算 loss
+```
+
+因此模型优化的是：
+
+```text
+P("Yes" | system prompt, comment, rule)
+P("No"  | system prompt, comment, rule)
+```
+
+而不是学习复述评论、规则或生成长篇解释。这也是这个 SFT 方案适合二分类比赛的原因。
+
+### 5. LoRA 与 SFT 参数
+
+以高分 Qwen3-14B 脚本为例：
+
+| 参数 | 设置 |
+|---|---|
+| 权重量化 | 4-bit，亦支持 8-bit |
+| LoRA rank | `r=16` |
+| LoRA alpha | `32` |
+| LoRA dropout | `0.0` |
+| LoRA bias | `none` |
+| 目标模块 | `q/k/v/o_proj` 和 `gate/up/down_proj` |
+| Gradient checkpointing | Unsloth 模式 |
+| 训练最大长度 | 256 tokens |
+| 推理最大长度 | 512 tokens |
+| Packing | `False` |
+| Epoch | 1 |
+| Learning rate | `1.5e-4` |
+| Weight decay | `0.01` |
+| Scheduler | linear |
+| Optimizer | `adamw_8bit` |
+| Batch size | 4 |
+| Gradient accumulation | 4 |
+| 有效 batch size | 16 |
+| Warmup | 0 |
+
+不同规模模型会调整单卡 batch size，但数据格式、response-only loss、LoRA 目标模块和
+一轮 SFT 思路基本一致。每个模型还使用不同随机种子，为最终集成提供差异性。
+
+### 6. SFT 后如何得到分类分数
+
+推理阶段并不要求模型真正生成一整段回答。高分代码取 assistant 第一个输出位置的
+vocabulary logits，收集多个肯定和否定写法的首 token：
+
+```text
+肯定：Yes, YES, Y, yes, True
+否定：No, NO, N, no, False
+```
+
+然后只在这些候选 token 上计算归一化分数，得到 `p_yes`。最后再在每条规则内部进行
+rank normalization，生成提交分数。
+
+因此生成式高分链路可以概括为：
+
+```text
+二元标签
+  → Yes/No completion
+  → chat template
+  → 4-bit LoRA SFT
+  → assistant 首 token logits
+  → Yes/No 相对概率
+  → 每条规则内排名
+  → submission
+```
+
+需要特别区分：以上是 Qwen/Llama 的生成式 SFT。当前推荐 Colab 使用的 Ettin 是
+encoder sequence classification，采用 BCE loss，并不执行聊天 SFT。两者共享相同的
+高分数据构造和按规则排名思路，但模型训练目标不同。
+
 ## Ettin 单模型训练方法
 
 训练脚本位于
