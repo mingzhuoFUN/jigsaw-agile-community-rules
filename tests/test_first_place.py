@@ -2,23 +2,48 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.first_place.data import build_training_frame
-from src.first_place.ensemble import blend
-from scripts.run_verified_ettin import validate_submission
+from first_place.data import build_training_frame
+from first_place.ensemble import blend
+from first_place.validation import validate_submission
 
 
-def test_training_frame_repeats_test_examples(tmp_path: Path) -> None:
+def test_training_frame_matches_reference_example_repeats(tmp_path: Path) -> None:
     pd.DataFrame(
         [{"body": "base", "rule": "rule", "rule_violation": 1}]
     ).to_csv(tmp_path / "train.csv", index=False)
     pd.DataFrame([{
+        "row_id": 1, "body": "target",
         "positive_example_1": "p1", "positive_example_2": "p2",
         "negative_example_1": "n1", "negative_example_2": "n2", "rule": "rule",
     }]).to_csv(tmp_path / "test.csv", index=False)
 
-    frame = build_training_frame(tmp_path, example_repeats=3)
-    assert len(frame) == 13
-    assert (frame["source"] == "test_examples").sum() == 12
+    frame = build_training_frame(tmp_path)
+    assert len(frame) == 9
+    assert (frame["source"] == "test_examples").sum() == 8
+
+
+def test_training_frame_cleans_invalid_and_duplicate_rows(tmp_path: Path) -> None:
+    pd.DataFrame([
+        {"body": " valid\r\n", "rule": " rule ", "rule_violation": 1},
+        {"body": " valid\r\n", "rule": " rule ", "rule_violation": 1},
+        {"body": " ", "rule": "rule", "rule_violation": 0},
+        {"body": "bad label", "rule": "rule", "rule_violation": 2},
+    ]).to_csv(tmp_path / "train.csv", index=False)
+    pd.DataFrame([{
+        "row_id": 1,
+        "body": "test",
+        "positive_example_1": " p1 ",
+        "positive_example_2": None,
+        "negative_example_1": "n1\x00",
+        "negative_example_2": " ",
+        "rule": " rule ",
+    }]).to_csv(tmp_path / "test.csv", index=False)
+
+    frame = build_training_frame(tmp_path, example_repeats=1)
+    assert len(frame) == 3
+    assert set(frame["body"]) == {"valid", "p1", "n1"}
+    assert set(frame["rule"]) == {"rule"}
+    assert set(frame["rule_violation"]) == {0, 1}
 
 
 def test_blend_normalizes_notebook_weights(tmp_path: Path) -> None:
@@ -46,3 +71,5 @@ def test_verified_submission_contract(tmp_path: Path) -> None:
     )
     result = validate_submission(output, tmp_path)
     assert len(result) == 2
+    assert result["row_id"].tolist() == [1, 2]
+    assert pd.read_csv(output)["row_id"].tolist() == [1, 2]

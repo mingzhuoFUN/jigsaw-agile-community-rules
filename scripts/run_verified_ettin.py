@@ -13,6 +13,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from first_place.data import build_training_frame
+from first_place.validation import validate_submission
+
 
 MODEL_ID = "jhu-clsp/ettin-encoder-400m"
 MODEL_REVISION = "7662476d60abb071a5bd319c9f3074f3072c062d"
@@ -38,24 +41,6 @@ def download_model(attempts: int = 4) -> Path:
             print(f"Download interrupted: {exc}\nRetrying in {delay}s...", flush=True)
             time.sleep(delay)
     raise RuntimeError("unreachable")
-
-
-def validate_submission(path: Path, data_dir: Path) -> pd.DataFrame:
-    submission = pd.read_csv(path)
-    sample = pd.read_csv(data_dir / "sample_submission.csv")
-    if list(submission.columns) != ["row_id", "rule_violation"]:
-        raise ValueError(f"Unexpected submission columns: {submission.columns.tolist()}")
-    if len(submission) != len(sample):
-        raise ValueError(f"Expected {len(sample)} predictions, got {len(submission)}")
-    if set(submission["row_id"]) != set(sample["row_id"]):
-        raise ValueError("Submission row_id values do not match sample_submission.csv")
-    if submission["row_id"].duplicated().any():
-        raise ValueError("Duplicate row_id values in submission")
-    if not submission["rule_violation"].notna().all():
-        raise ValueError("Submission contains missing predictions")
-    if not submission["rule_violation"].between(0, 1).all():
-        raise ValueError("Predictions must be in [0, 1]")
-    return submission
 
 
 def run_training(data_dir: Path, output_dir: Path, smoke_rows: int) -> None:
@@ -103,12 +88,19 @@ def run_training(data_dir: Path, output_dir: Path, smoke_rows: int) -> None:
 
     submission_path = output_dir / "submission7.csv"
     submission = validate_submission(submission_path, data_dir)
+    training_frame = build_training_frame(data_dir, example_repeats=2, seed=3001)
     manifest = {
         "completed_at_utc": datetime.now(timezone.utc).isoformat(),
         "model_id": MODEL_ID,
         "model_revision": MODEL_REVISION,
         "smoke_rows": smoke_rows,
         "train_rows": int(len(pd.read_csv(data_dir / "train.csv"))),
+        "constructed_training_rows": int(len(training_frame)),
+        "constructed_source_counts": {
+            key: int(value)
+            for key, value in training_frame["source"].value_counts().items()
+        },
+        "test_example_repeats": 2,
         "test_rows": int(len(submission)),
         "submission": str(submission_path),
         "model_saved": not bool(smoke_rows),
