@@ -30,7 +30,8 @@ Phi-4 and Llama 3.2 3B are defined but commented out. They remain available in
 ## Training and inference
 
 - Training rows are combined with labeled positive/negative examples supplied in the test set.
-- Target examples are repeated three times after de-duplication.
+- The executable notebook contains each unique target example twice after de-duplication
+  (the nearby source comment incorrectly says three times).
 - Generative models use 4-bit LoRA through Unsloth, one epoch, response-only loss, and
   256-token training / 512-token inference limits.
 - Ettin uses sequence classification and produces sigmoid probabilities.
@@ -53,6 +54,14 @@ exact reference result.
 The supplied notebook contains no leaderboard score or local validation score. A faithful
 score comparison can therefore only be made after submitting `submission.csv` to the same
 Kaggle competition/evaluation environment. No local AUC is claimed to match the winner.
+
+## Recommended runnable contract
+
+The supported Colab proof uses the Ettin-400M component only. It preserves the reference
+data construction, rule-aware pair classification, per-rule ranking, and submission
+contract while avoiding the cost and memory requirements of the complete ensemble.
+Successful execution proves the GitHub -> Colab -> Hugging Face -> training -> inference
+-> Google Drive path; it does not claim the first-place ensemble score.
 
 ## Artifacts
 

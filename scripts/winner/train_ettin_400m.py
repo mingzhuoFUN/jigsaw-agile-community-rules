@@ -1,4 +1,5 @@
 import os, math, time, argparse
+from pathlib import Path
 
 # ----------------------
 # Constants
@@ -22,6 +23,7 @@ os.environ.setdefault("NCCL_ASYNC_ERROR_HANDLING", "1")
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
+from first_place.data import build_training_frame
 from transformers import (
     AutoTokenizer, AutoConfig, AutoModelForSequenceClassification,
     get_cosine_schedule_with_warmup
@@ -62,37 +64,12 @@ rule: {row["rule"]}
 {COMPLETE_PHRASE}"""
 
 def get_dataframe_to_train(data_path):
-    train_dataset = pd.read_csv(f"{data_path}/train.csv")
-    test_dataset = pd.read_csv(f"{data_path}/test.csv")
-
-    flatten = []
-
-    # base train rows
-    base = train_dataset[["body", "rule", "rule_violation"]].copy()
-    base["source"] = "train"
-    flatten.append(base)
-
-    # upsample target block (test examples) by labeling them now
-    for violation_type in ["positive", "negative"]:
-        for i in range(1, 3):
-            col = f"{violation_type}_example_{i}"
-            sub_dataset = test_dataset[[col, "rule"]].copy()
-            sub_dataset = sub_dataset.rename(columns={col: "body"})
-            sub_dataset["rule_violation"] = 1 if violation_type == "positive" else 0
-            sub_dataset["source"] = "test_examples"
-            flatten.append(sub_dataset)
-
-    dataframe = pd.concat(flatten, axis=0, ignore_index=True)
-    dataframe = dataframe.drop_duplicates(ignore_index=True)
-
-    # upsample test_examples once more (2x extra copies -> appears 3x total)
-    test_rows = dataframe[dataframe["source"] == "test_examples"]
-    if not test_rows.empty:
-        dataframe = pd.concat([dataframe, test_rows], axis=0, ignore_index=True)
-
-    dataframe = dataframe.sample(frac=1.0, random_state=3001).reset_index(drop=True)
-    dataframe = dataframe.drop(columns=["source"])
-    return dataframe
+    dataframe = build_training_frame(
+        Path(data_path),
+        example_repeats=int(os.environ.get("EXAMPLE_REPEATS", "2")),
+        seed=3001,
+    )
+    return dataframe.drop(columns=["source"])
 
 def build_classification_dataframe(df, tok_sep_token="</s>"):
     """
@@ -148,12 +125,14 @@ def train_single_gpu(no_save: bool = False):
     raw_df = get_dataframe_to_train(DATA_PATH)
     smoke_rows = int(os.environ.get("SMOKE_ROWS", "0"))
     if smoke_rows:
-        raw_df = raw_df.groupby("rule_violation", group_keys=False).apply(
-            lambda group: group.sample(
-                n=min(len(group), max(1, smoke_rows // 2)),
-                random_state=3001,
-            )
-        ).reset_index(drop=True)
+        per_class = max(1, smoke_rows // 2)
+        raw_df = pd.concat(
+            [
+                group.sample(n=min(len(group), per_class), random_state=3001)
+                for _, group in raw_df.groupby("rule_violation", sort=True)
+            ],
+            ignore_index=True,
+        ).sample(frac=1, random_state=3001).reset_index(drop=True)
 
     # Tokenizer first, to know SEP token for concatenation
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_PATH, use_fast=True, trust_remote_code=False)
