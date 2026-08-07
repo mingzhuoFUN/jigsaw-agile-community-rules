@@ -29,7 +29,7 @@ from transformers import (
     get_cosine_schedule_with_warmup
 )
 
-# Speed-friendly defaults
+# GPU 性能设置：在支持的显卡上允许 TF32，并启用 cuDNN 自动选择高效算法。
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.benchmark = True
 if hasattr(torch, "set_float32_matmul_precision"):
@@ -64,6 +64,7 @@ rule: {row["rule"]}
 {COMPLETE_PHRASE}"""
 
 def get_dataframe_to_train(data_path):
+    # 所有清洗、示例展开和重复采样都由统一数据模块完成。
     dataframe = build_training_frame(
         Path(data_path),
         example_repeats=int(os.environ.get("EXAMPLE_REPEATS", "2")),
@@ -73,7 +74,7 @@ def get_dataframe_to_train(data_path):
 
 def build_classification_dataframe(df, tok_sep_token="</s>"):
     """
-    Build a dataframe for classification using text = rule + [SEP] + comment.
+    构造分类输入：规则放在前面，评论放在后面，中间使用 tokenizer 的分隔符。
     """
     df = df.copy()
     sep = tok_sep_token if tok_sep_token else "</s>"
@@ -121,7 +122,7 @@ def collate_fn_builder(tokenizer, max_length):
 def train_single_gpu(no_save: bool = False):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Data
+    # 构造完整训练集；smoke 模式会在每个类别中做固定种子的平衡抽样。
     raw_df = get_dataframe_to_train(DATA_PATH)
     smoke_rows = int(os.environ.get("SMOKE_ROWS", "0"))
     if smoke_rows:
@@ -134,7 +135,7 @@ def train_single_gpu(no_save: bool = False):
             ignore_index=True,
         ).sample(frac=1, random_state=3001).reset_index(drop=True)
 
-    # Tokenizer first, to know SEP token for concatenation
+    # 先加载 tokenizer，才能使用与预训练模型一致的 SEP token。
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_PATH, use_fast=True, trust_remote_code=False)
     sep_token = tokenizer.sep_token if tokenizer.sep_token is not None else "</s>"
 
@@ -153,14 +154,14 @@ def train_single_gpu(no_save: bool = False):
         drop_last=False,
     )
 
-    # Model
+    # 单输出分类头直接产生一个 logit，后续使用 BCEWithLogitsLoss。
     cfg = AutoConfig.from_pretrained(BASE_MODEL_PATH, num_labels=1, problem_type=None)  # we'll set loss manually
     model = AutoModelForSequenceClassification.from_pretrained(BASE_MODEL_PATH, config=cfg)
     if GRADIENT_CHECKPOINTING:
         model.gradient_checkpointing_enable()
     model.to(device)
 
-    # Optimizer / Scheduler
+    # 梯度累积会减少实际 optimizer step 数，因此调度器也按更新次数计算。
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WD)
     total_steps = max(1, EPOCHS * len(loader) // max(1, GRAD_ACCUM))
     warmup_steps = int(WARMUP * total_steps)
@@ -189,6 +190,7 @@ def train_single_gpu(no_save: bool = False):
                 logits = out.logits  # (B,1)
                 loss = bce(logits, labels)
 
+            # 除以累积步数，使累计后的梯度尺度与大 batch 训练保持一致。
             loss = loss / max(1, GRAD_ACCUM)
             scaler.scale(loss).backward()
 
@@ -218,7 +220,7 @@ def train_single_gpu(no_save: bool = False):
     else:
         print("Skipping save (in-memory use only).")
 
-    # Return in-memory artifacts for immediate inference
+    # 直接返回内存中的模型，训练后可以立刻推理，避免再次从磁盘加载。
     return model, tokenizer
 
 # ----------------------
@@ -227,6 +229,7 @@ def train_single_gpu(no_save: bool = False):
 # - Otherwise, loads from OUTPUT_DIR.
 # ----------------------
 def _bucket_by_length(tok, texts, max_length=512):
+    # 相近长度样本放在同一批次，减少 padding，从而降低推理显存和耗时。
     lens = tok(texts, return_length=True, truncation=True, max_length=max_length)
     order = sorted(range(len(texts)), key=lambda k: lens["length"][k], reverse=True)
     return order
@@ -300,7 +303,7 @@ def infer_single_gpu(model: AutoModelForSequenceClassification = None,
 
     out_df = pd.DataFrame({"row_id": out_ids, "rule": out_rules, "rule_violation": out_probs})
 
-    # Per-rule ranks scaled to [0,1]
+    # 不同规则的原始概率尺度可能不同，因此在每条规则内部转成 [0, 1] 排名分数。
     r = out_df.groupby("rule")["rule_violation"].rank(method="average", ascending=True)
     n = out_df.groupby("rule")["rule_violation"].transform("size")
     denom = (n - 1).where(n > 1, 1)
