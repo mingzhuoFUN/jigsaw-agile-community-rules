@@ -1,6 +1,4 @@
-# Jigsaw Agile Community Rules：单模型训练与 Colab 闭环
-
-本项目围绕规则感知的社区评论分类任务，提供一条适合 Google Colab 验证的单模型闭环：
+# Jigsaw Agile Community Rules：单模型训练
 
 ```text
 GitHub 代码
