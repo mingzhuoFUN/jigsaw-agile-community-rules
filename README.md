@@ -1,144 +1,106 @@
-# Jigsaw Agile Community Rules 复现笔记
+# Jigsaw Agile Community Rules
 
-Kaggle: https://www.kaggle.com/competitions/jigsaw-agile-community-rules
+[![Kaggle](https://img.shields.io/badge/Kaggle-Competition-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/competitions/jigsaw-agile-community-rules)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-[运行已验证的单模型 Colab](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb)
+闈㈠悜绀惧尯瑙勫垯鐞嗚В鐨勬枃鏈垎绫荤郴缁熴€傞」鐩皢璇勮銆佺ぞ鍖恒€佽鍒欐枃鏈強姝ｅ弽绀轰緥缁勭粐涓虹粺涓€杈撳叆锛岄€氳繃鍙潬鐨勯獙璇佽璁°€佺█鐤忕壒寰佸熀绾夸笌 Transformer 妯″瀷杈撳嚭杩濊姒傜巼銆?
+## 椤圭洰姒傝
 
-[打开第一名完整方案 Colab](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/first_place_reproduction_colab.ipynb)
+| 椤圭洰 | 鍐呭 |
+|---|---|
+| 浠诲姟 | 鍒ゆ柇 Reddit 璇勮鏄惁杩濆弽缁欏畾绀惧尯瑙勫垯 |
+| 杈撳叆 | `body`銆乣subreddit`銆乣rule`銆佹渚嬩笌鍙嶄緥 |
+| 杈撳嚭 | 姣忎釜 `row_id` 鐨?`rule_violation` 姒傜巼 |
+| 璇勪及鎸囨爣 | ROC AUC |
+| 鏍稿績闅剧偣 | 娴嬭瘯闆嗗寘鍚缁冮樁娈垫湭鍑虹幇鐨勮鍒欙紝闇€瑕佸熀浜庤鍒欒涔夋硾鍖?|
+| 鎺ㄨ崘鍏ュ彛 | [鍦?Google Colab 涓繍琛?Ettin 妯″瀷](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb) |
 
-## 任务
+## 绯荤粺娴佺▼
 
-给定 Reddit 评论 `body`、社区 `subreddit`、待判断的社区规则 `rule`，以及该规则下的正负示例，预测这条评论是否违反该规则。目标列是 `rule_violation`，提交文件需要输出每个 `row_id` 的违规概率。
-
-竞赛评估指标是 AUC。页面说明里特别强调：训练集只包含两条规则，但测试集会包含训练中没有见过的其他规则，所以模型必须利用规则文本和示例泛化，而不是把规则当成固定类别记住。
-
-## 当前数据
-
-- `train.csv`: 2029 行，9 列
-- `test.csv`: 10 行，8 列
-- `sample_submission.csv`: 10 行，2 列
-- 训练标签较均衡：`1` 为 1031 行，`0` 为 998 行
-- 训练集中两条规则：
-  - No legal advice
-  - No Advertising
-
-## 环境
-
-```powershell
-pip install -r requirements.txt
+```mermaid
+flowchart LR
+    A["璇勮涓庣ぞ鍖轰俊鎭?] --> E["缁熶竴鏂囨湰琛ㄧず"]
+    B["瑙勫垯鏂囨湰"] --> E
+    C["杩濊绀轰緥"] --> E
+    D["鍚堣绀轰緥"] --> E
+    E --> F{"寤烘ā璺嚎"}
+    F --> G["TF-IDF + Logistic Regression"]
+    F --> H["Ettin / Transformer"]
+    F --> I["澶氭ā鍨嬮泦鎴?]
+    G --> J["浜ゅ弶楠岃瘉涓庢鐜囨牎鍑?]
+    H --> J
+    I --> J
+    J --> K["rule_violation 姒傜巼"]
+    K --> L["submission.csv"]
 ```
 
-## 下载数据
+## 鏁版嵁姒傝
 
-需要先在 Kaggle 登录并接受竞赛规则，然后运行：
+| 鏁版嵁闆?| 琛屾暟 | 鍒楁暟 | 璇存槑 |
+|---|---:|---:|---|
+| `train.csv` | 2,029 | 9 | 甯?`rule_violation` 鏍囩 |
+| `test.csv` | 10 | 8 | 鍏紑娴嬭瘯鏍蜂緥 |
+| `sample_submission.csv` | 10 | 2 | 鎻愪氦鏍煎紡 |
 
+璁粌鏍囩鍒嗗竷杈冨潎琛★細姝ｇ被 1,031 鏉★紝璐熺被 998 鏉°€傝缁冮泦鍖呭惈 `No legal advice` 涓?`No Advertising` 涓ょ被瑙勫垯锛屾ā鍨嬮渶瑕佸埄鐢ㄨ鍒欐枃鏈笌绀轰緥瀹屾垚璺ㄨ鍒欐硾鍖栥€?
+## 寤烘ā鏂规
+
+| 妯″潡 | 瀹炵幇 |
+|---|---|
+| 鏂囨湰鏋勯€?| 璇勮銆佺ぞ鍖恒€佽鍒欍€佹鍙嶇ず渚嬪垎鍖烘嫾鎺?|
+| 绋€鐤忕壒寰?| word 1鈥? gram + `char_wb` 3鈥? gram TF-IDF |
+| 鍩虹嚎妯″瀷 | Logistic Regression + sigmoid calibration |
+| 娣卞害妯″瀷 | Ettin-400M 缂栫爜鍣?|
+| 楠岃瘉 | Stratified K-Fold AUC锛屽苟鎵╁睍瑙勫垯/绀惧尯鐣欏嚭楠岃瘉 |
+| 闆嗘垚 | 澶氭ā鍨嬮娴嬫寜 `row_id` 瀵归綈鍚庡姞鏉冭瀺鍚?|
+
+## 蹇€熷紑濮?
+### Google Colab
+
+鐐瑰嚮涓嬫柟鎸夐挳鍗冲彲鎵撳紑宸查厤缃殑杩愯鐜锛?
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb)
+
+鍦?Colab Secrets 涓坊鍔?`KAGGLE_API_TOKEN`锛屽苟纭 Kaggle 璐﹀彿宸叉帴鍙楃珵璧涜鍒欍€?
+### 鏈湴鐜
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+涓嬭浇绔炶禌鏁版嵁锛?
 ```powershell
 .\download_data.ps1
 ```
 
-也可以手动运行：
-
-```powershell
-kaggle competitions download -c jigsaw-agile-community-rules -p data/raw
-Expand-Archive -LiteralPath data/raw/jigsaw-agile-community-rules.zip -DestinationPath data/raw -Force
-```
-
-## 查看数据
+杩愯鏁版嵁鍒嗘瀽涓庡熀绾胯缁冿細
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'
 python src/eda.py
-```
-
-## Baseline
-
-第一版 baseline 使用：
-
-- 文本构造：`COMMENT + SUBREDDIT + RULE + VIOLATING EXAMPLES + NON-VIOLATING EXAMPLES`
-- 特征：TF-IDF word 1-2 gram + char_wb 3-5 gram
-- 模型：Logistic Regression + sigmoid calibration
-- 验证：Stratified K-Fold AUC
-
-```powershell
 python src/train_baseline.py
 ```
 
-输出：
-
+涓昏杈撳嚭锛?
 - `outputs/submission_baseline.csv`
 - `outputs/oof_baseline.csv`
 - `outputs/metrics_baseline.json`
 
-提交：
-
-```powershell
-kaggle competitions submit -c jigsaw-agile-community-rules -f outputs/submission_baseline.csv -m "tfidf logistic baseline"
-```
-
-## 后续复现路线
-
-1. 强化验证：按 `rule` 或 `subreddit` 做留出，模拟未见规则/社区。
-2. 特征改进：分别编码 comment、rule、positive examples、negative examples，加入相似度特征。
-3. Transformer baseline：使用 DeBERTa/MiniLM 做 pair classification。
-4. Few-shot/LLM 路线：把正负例作为上下文，做零样本或小样本推理，再校准概率。
-5. 集成：TF-IDF、Transformer、规则关键词、相似度模型做 rank averaging。
-
-## 第一名方案完整复现
-
-参考 notebook：`1st-place-code (1).ipynb`。它不是单模型方案，而是 6 个生成式
-LoRA 模型与 1 个 Ettin-400M 编码器的集成。训练时把测试集提供的正反例转成带标签
-样本，并重复 3 次以增强未见规则上的泛化。
-
-项目化复现代码位于：
-
-- `notebooks/first_place_reproduction_colab.ipynb`：Colab 完整训练入口。
-- `REPRODUCTION.md`：参考版本、实际启用模型、参数和已知歧义。
-- `reference/notebook_cells/`：原 notebook 中全部 21 个 `%%writefile` 脚本的冻结副本。
-- `scripts/winner/`：仅修改路径和在线模型来源的可运行脚本。
-- `scripts/run_colab.py`：在单 GPU Colab 上顺序执行原方案实际启用的 6 个模型。
-- `configs/first_place.json`：原方案的模型矩阵与关键参数。
-- `src/first_place/data.py`：提示词和训练样本构造。
-- `src/first_place/ensemble.py`：按 `row_id` 对齐并加权融合各模型预测。
-- `tests/test_first_place.py`：数据增强和融合逻辑的回归测试。
-
-Colab 使用步骤：
-
-1. 打开上面的 Colab 链接并选择 GPU 运行时，14B 模型建议 A100/高内存实例。
-2. 在 Colab Secrets 添加 `KAGGLE_API_TOKEN`，并确保 Kaggle 账号已接受竞赛规则。
-3. 依次运行单元格；smoke test 通过后将 `RUN_FULL_TRAINING` 改为 `True`。
-4. 日志、各模型预测与最终 `submission.csv` 会写入 Google Drive。
-
-Colab 单 GPU 入口按顺序执行模型，只改变原双 GPU notebook 的并发调度，不修改模型、
-训练数据、随机种子或超参数。原 notebook 实际启用 6 个预测模型；Phi-4 和
-Llama-3.2-3B 虽有定义但在编排中被注释，详情见 `REPRODUCTION.md`。
-
-融合已有预测：
-
-```powershell
-python -m first_place.ensemble `
-  --input-dir outputs/first_place `
-  --output outputs/submission_first_place.csv
-```
-
-notebook 原始融合权重之和为 `1.1`，项目代码会自动归一化，同时允许只融合当前已经
-完成的模型，避免输出概率超出预期尺度。
-
-## 推荐学习路径：先跑通单模型
-
-`notebooks/verified_ettin_colab.ipynb` 是当前推荐入口。它使用第一名方案中的
-Ettin-400M，并验证完整链路：
+## 椤圭洰缁撴瀯
 
 ```text
-GitHub → Colab → Hugging Face → Kaggle → GPU 微调 → 推理 → Google Drive
+notebooks/                 # Colab 璁粌鍏ュ彛
+configs/                   # 妯″瀷涓庤缁冮厤缃?scripts/                   # Notebook 鏋勫缓鍙婅缁冪紪鎺?src/
+  first_place/             # 鏁版嵁鏋勯€犱笌闆嗘垚妯″潡
+  eda.py                   # 鎺㈢储鎬ф暟鎹垎鏋?  train_baseline.py        # TF-IDF 鍩虹嚎
+tests/                     # 鏁版嵁銆佹寚鏍囦笌铻嶅悎閫昏緫娴嬭瘯
 ```
 
-该入口固定 Hugging Face 模型 revision 和关键依赖，先进行 32 条样本 smoke
-training，再执行完整训练。Google Drive 中会保留：
+## 宸ョ▼浜偣
 
-- `model/`：微调后的模型和 tokenizer；
-- `training.log`：实时训练日志；
-- `run_manifest.json`：模型 ID、revision、时间和数据规模；
-- `submission7.csv`：可提交预测。
+- 灏嗚鍒欐枃鏈笌姝ｅ弽绀轰緥浣滀负涓€绛夎緭鍏ワ紝鏀寔鏈瑙勫垯娉涘寲銆?- 鍚屾椂鎻愪緵杞婚噺鍩虹嚎涓?GPU 娣卞害妯″瀷璺緞锛屼究浜庡揩閫熼獙璇佸拰鎵╁睍銆?- 棰勬祴鎸?`row_id` 涓ユ牸瀵归綈锛岄檷浣庡妯″瀷铻嶅悎鏃剁殑鏁版嵁閿欎綅椋庨櫓銆?- Colab銆並aggle Token銆丟oogle Drive 杈撳嚭璺緞褰㈡垚瀹屾暣浜戠璁粌閾捐矾銆?
+## 鍚庣画鏂瑰悜
 
-六模型 notebook 保留用于完整学习第一名思路，但不再作为验证 GitHub/Colab 工程
-链路的前置条件。
+- 鎸夎鍒欐垨绀惧尯杩涜鐣欏嚭楠岃瘉锛屾洿璐磋繎闅愯棌娴嬭瘯鍒嗗竷銆?- 鍒嗗埆缂栫爜璇勮銆佽鍒欎笌绀轰緥锛屽苟鍔犲叆璇箟鐩镐技搴︾壒寰併€?- 瀵?TF-IDF銆乀ransformer 涓庤鍒欑壒寰佽繘琛?rank averaging銆?- 澧炲姞妯″瀷璇樊鍒嗘瀽涓庡垎瑙勫垯 AUC 鍙鍖栥€?
