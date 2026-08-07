@@ -4,65 +4,70 @@
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
-闈㈠悜绀惧尯瑙勫垯鐞嗚В鐨勬枃鏈垎绫荤郴缁熴€傞」鐩皢璇勮銆佺ぞ鍖恒€佽鍒欐枃鏈強姝ｅ弽绀轰緥缁勭粐涓虹粺涓€杈撳叆锛岄€氳繃鍙潬鐨勯獙璇佽璁°€佺█鐤忕壒寰佸熀绾夸笌 Transformer 妯″瀷杈撳嚭杩濊姒傜巼銆?
-## 椤圭洰姒傝
+面向社区规则理解的文本分类系统。项目将评论、社区、规则文本及正反示例组织为统一输入，通过可靠的验证设计、稀疏特征基线与 Transformer 模型输出违规概率。
 
-| 椤圭洰 | 鍐呭 |
+## 项目概览
+
+| 项目 | 内容 |
 |---|---|
-| 浠诲姟 | 鍒ゆ柇 Reddit 璇勮鏄惁杩濆弽缁欏畾绀惧尯瑙勫垯 |
-| 杈撳叆 | `body`銆乣subreddit`銆乣rule`銆佹渚嬩笌鍙嶄緥 |
-| 杈撳嚭 | 姣忎釜 `row_id` 鐨?`rule_violation` 姒傜巼 |
-| 璇勪及鎸囨爣 | ROC AUC |
-| 鏍稿績闅剧偣 | 娴嬭瘯闆嗗寘鍚缁冮樁娈垫湭鍑虹幇鐨勮鍒欙紝闇€瑕佸熀浜庤鍒欒涔夋硾鍖?|
-| 鎺ㄨ崘鍏ュ彛 | [鍦?Google Colab 涓繍琛?Ettin 妯″瀷](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb) |
+| 任务 | 判断 Reddit 评论是否违反给定社区规则 |
+| 输入 | `body`、`subreddit`、`rule`、正例与反例 |
+| 输出 | 每个 `row_id` 的 `rule_violation` 概率 |
+| 评估指标 | ROC AUC |
+| 核心难点 | 测试集包含训练阶段未出现的规则，需要基于规则语义泛化 |
+| 推荐入口 | [在 Google Colab 中运行 Ettin 模型](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb) |
 
-## 绯荤粺娴佺▼
+## 系统流程
 
 ```mermaid
 flowchart LR
-    A["璇勮涓庣ぞ鍖轰俊鎭?] --> E["缁熶竴鏂囨湰琛ㄧず"]
-    B["瑙勫垯鏂囨湰"] --> E
-    C["杩濊绀轰緥"] --> E
-    D["鍚堣绀轰緥"] --> E
-    E --> F{"寤烘ā璺嚎"}
+    A["评论与社区信息"] --> E["统一文本表示"]
+    B["规则文本"] --> E
+    C["违规示例"] --> E
+    D["合规示例"] --> E
+    E --> F{"建模路线"}
     F --> G["TF-IDF + Logistic Regression"]
     F --> H["Ettin / Transformer"]
-    F --> I["澶氭ā鍨嬮泦鎴?]
-    G --> J["浜ゅ弶楠岃瘉涓庢鐜囨牎鍑?]
+    F --> I["多模型集成"]
+    G --> J["交叉验证与概率校准"]
     H --> J
     I --> J
-    J --> K["rule_violation 姒傜巼"]
+    J --> K["rule_violation 概率"]
     K --> L["submission.csv"]
 ```
 
-## 鏁版嵁姒傝
+## 数据概览
 
-| 鏁版嵁闆?| 琛屾暟 | 鍒楁暟 | 璇存槑 |
+| 数据集 | 行数 | 列数 | 说明 |
 |---|---:|---:|---|
-| `train.csv` | 2,029 | 9 | 甯?`rule_violation` 鏍囩 |
-| `test.csv` | 10 | 8 | 鍏紑娴嬭瘯鏍蜂緥 |
-| `sample_submission.csv` | 10 | 2 | 鎻愪氦鏍煎紡 |
+| `train.csv` | 2,029 | 9 | 带 `rule_violation` 标签 |
+| `test.csv` | 10 | 8 | 公开测试样例 |
+| `sample_submission.csv` | 10 | 2 | 提交格式 |
 
-璁粌鏍囩鍒嗗竷杈冨潎琛★細姝ｇ被 1,031 鏉★紝璐熺被 998 鏉°€傝缁冮泦鍖呭惈 `No legal advice` 涓?`No Advertising` 涓ょ被瑙勫垯锛屾ā鍨嬮渶瑕佸埄鐢ㄨ鍒欐枃鏈笌绀轰緥瀹屾垚璺ㄨ鍒欐硾鍖栥€?
-## 寤烘ā鏂规
+训练标签分布较均衡：正类 1,031 条，负类 998 条。训练集包含 `No legal advice` 与 `No Advertising` 两类规则，模型需要利用规则文本与示例完成跨规则泛化。
 
-| 妯″潡 | 瀹炵幇 |
+## 建模方案
+
+| 模块 | 实现 |
 |---|---|
-| 鏂囨湰鏋勯€?| 璇勮銆佺ぞ鍖恒€佽鍒欍€佹鍙嶇ず渚嬪垎鍖烘嫾鎺?|
-| 绋€鐤忕壒寰?| word 1鈥? gram + `char_wb` 3鈥? gram TF-IDF |
-| 鍩虹嚎妯″瀷 | Logistic Regression + sigmoid calibration |
-| 娣卞害妯″瀷 | Ettin-400M 缂栫爜鍣?|
-| 楠岃瘉 | Stratified K-Fold AUC锛屽苟鎵╁睍瑙勫垯/绀惧尯鐣欏嚭楠岃瘉 |
-| 闆嗘垚 | 澶氭ā鍨嬮娴嬫寜 `row_id` 瀵归綈鍚庡姞鏉冭瀺鍚?|
+| 文本构造 | 评论、社区、规则、正反示例分区拼接 |
+| 稀疏特征 | word 1–2 gram + `char_wb` 3–5 gram TF-IDF |
+| 基线模型 | Logistic Regression + sigmoid calibration |
+| 深度模型 | Ettin-400M 编码器 |
+| 验证 | Stratified K-Fold AUC，并扩展规则/社区留出验证 |
+| 集成 | 多模型预测按 `row_id` 对齐后加权融合 |
 
-## 蹇€熷紑濮?
+## 快速开始
+
 ### Google Colab
 
-鐐瑰嚮涓嬫柟鎸夐挳鍗冲彲鎵撳紑宸查厤缃殑杩愯鐜锛?
+点击下方按钮即可打开已配置的运行环境：
+
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb)
 
-鍦?Colab Secrets 涓坊鍔?`KAGGLE_API_TOKEN`锛屽苟纭 Kaggle 璐﹀彿宸叉帴鍙楃珵璧涜鍒欍€?
-### 鏈湴鐜
+在 Colab Secrets 中添加 `KAGGLE_API_TOKEN`，并确认 Kaggle 账号已接受竞赛规则。
+
+### 本地环境
 
 ```powershell
 python -m venv .venv
@@ -70,12 +75,13 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-涓嬭浇绔炶禌鏁版嵁锛?
+下载竞赛数据：
+
 ```powershell
 .\download_data.ps1
 ```
 
-杩愯鏁版嵁鍒嗘瀽涓庡熀绾胯缁冿細
+运行数据分析与基线训练：
 
 ```powershell
 $env:PYTHONIOENCODING='utf-8'
@@ -83,24 +89,35 @@ python src/eda.py
 python src/train_baseline.py
 ```
 
-涓昏杈撳嚭锛?
+主要输出：
+
 - `outputs/submission_baseline.csv`
 - `outputs/oof_baseline.csv`
 - `outputs/metrics_baseline.json`
 
-## 椤圭洰缁撴瀯
+## 项目结构
 
 ```text
-notebooks/                 # Colab 璁粌鍏ュ彛
-configs/                   # 妯″瀷涓庤缁冮厤缃?scripts/                   # Notebook 鏋勫缓鍙婅缁冪紪鎺?src/
-  first_place/             # 鏁版嵁鏋勯€犱笌闆嗘垚妯″潡
-  eda.py                   # 鎺㈢储鎬ф暟鎹垎鏋?  train_baseline.py        # TF-IDF 鍩虹嚎
-tests/                     # 鏁版嵁銆佹寚鏍囦笌铻嶅悎閫昏緫娴嬭瘯
+notebooks/                 # Colab 训练入口
+configs/                   # 模型与训练配置
+scripts/                   # Notebook 构建及训练编排
+src/
+  first_place/             # 数据构造与集成模块
+  eda.py                   # 探索性数据分析
+  train_baseline.py        # TF-IDF 基线
+tests/                     # 数据、指标与融合逻辑测试
 ```
 
-## 宸ョ▼浜偣
+## 工程亮点
 
-- 灏嗚鍒欐枃鏈笌姝ｅ弽绀轰緥浣滀负涓€绛夎緭鍏ワ紝鏀寔鏈瑙勫垯娉涘寲銆?- 鍚屾椂鎻愪緵杞婚噺鍩虹嚎涓?GPU 娣卞害妯″瀷璺緞锛屼究浜庡揩閫熼獙璇佸拰鎵╁睍銆?- 棰勬祴鎸?`row_id` 涓ユ牸瀵归綈锛岄檷浣庡妯″瀷铻嶅悎鏃剁殑鏁版嵁閿欎綅椋庨櫓銆?- Colab銆並aggle Token銆丟oogle Drive 杈撳嚭璺緞褰㈡垚瀹屾暣浜戠璁粌閾捐矾銆?
-## 鍚庣画鏂瑰悜
+- 将规则文本与正反示例作为一等输入，支持未见规则泛化。
+- 同时提供轻量基线与 GPU 深度模型路径，便于快速验证和扩展。
+- 预测按 `row_id` 严格对齐，降低多模型融合时的数据错位风险。
+- Colab、Kaggle Token、Google Drive 输出路径形成完整云端训练链路。
 
-- 鎸夎鍒欐垨绀惧尯杩涜鐣欏嚭楠岃瘉锛屾洿璐磋繎闅愯棌娴嬭瘯鍒嗗竷銆?- 鍒嗗埆缂栫爜璇勮銆佽鍒欎笌绀轰緥锛屽苟鍔犲叆璇箟鐩镐技搴︾壒寰併€?- 瀵?TF-IDF銆乀ransformer 涓庤鍒欑壒寰佽繘琛?rank averaging銆?- 澧炲姞妯″瀷璇樊鍒嗘瀽涓庡垎瑙勫垯 AUC 鍙鍖栥€?
+## 后续方向
+
+- 按规则或社区进行留出验证，更贴近隐藏测试分布。
+- 分别编码评论、规则与示例，并加入语义相似度特征。
+- 对 TF-IDF、Transformer 与规则特征进行 rank averaging。
+- 增加模型误差分析与分规则 AUC 可视化。
