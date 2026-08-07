@@ -1,19 +1,25 @@
 # Jigsaw Agile Community Rules：单模型训练
 
+[阅读或运行完整训练方法 Notebook](https://github.com/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/jigsaw_training_method.ipynb)
+
+`jigsaw_training_method.ipynb` 位于仓库根目录，是项目的主方法文档。它完整展示数据构造、
+生成式聊天 SFT、Ettin 编码器训练、推理打分、规则内排名和可选集成，可在普通 Jupyter、
+VS Code Notebook、Kaggle Notebook 或 GPU 服务器中运行，不依赖 Google Colab。
+
 ```text
 GitHub 代码
-  → Colab 干净运行时克隆仓库
-  → Colab Secrets 获取 Kaggle/Hugging Face 凭据
+  → Jupyter / Kaggle / Colab / GPU 服务器
+  → 本地环境或环境变量提供 Kaggle/Hugging Face 凭据
   → 下载竞赛数据
   → 从 Hugging Face 下载固定版本的 Ettin-400M
   → 构造干净训练数据
   → GPU 微调与推理
   → 校验 submission
-  → 模型、日志和预测保存到 Google Drive
+  → 模型、日志和预测保存到指定输出目录
 ```
 
-当前推荐入口使用单个 Ettin-400M 模型验证完整训练链路。项目不要求在 Colab 中训练
-多个 14B/8B/4B 模型，也可以在闭环跑通后按需要扩展其他 Hugging Face 模型。
+当前默认使用单个 Ettin-400M 模型验证完整训练链路。项目不要求训练多个 14B/8B/4B
+模型，也可以在闭环跑通后按需要扩展其他 Hugging Face 模型。
 
 | 项目 | 内容 |
 |---|---|
@@ -22,6 +28,7 @@ GitHub 代码
 | 输出 | 每个 `row_id` 的 `rule_violation` 概率 |
 | 评估指标 | ROC AUC |
 | 核心难点 | 测试集包含训练阶段未出现的规则，需要基于规则语义泛化 |
+| 完整方法 | [打开独立 Jupyter Notebook](https://github.com/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/jigsaw_training_method.ipynb) |
 | 推荐入口 | [在 Google Colab 中运行 Ettin 模型](https://colab.research.google.com/github/mingzhuoFUN/jigsaw-agile-community-rules/blob/main/notebooks/verified_ettin_colab.ipynb) |
 
 输入包含：
@@ -538,6 +545,8 @@ python scripts/run_verified_ettin.py `
 ## 仓库结构
 
 ```text
+jigsaw_training_method.ipynb      独立 Jupyter 主方法文档与可执行入口
+scripts/build_project_method_notebook.py
 scripts/run_verified_ettin.py     单模型闭环 runner
 notebooks/verified_ettin_colab.ipynb
 src/first_place/data.py           统一数据清洗和构造
