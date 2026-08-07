@@ -10,10 +10,11 @@ nb["metadata"]["colab"] = {"name": "Verified Jigsaw Ettin training", "provenance
 nb["metadata"]["kernelspec"] = {"display_name": "Python 3", "name": "python3"}
 nb["cells"] = [
     nbf.v4.new_markdown_cell(
-        """# Verified GitHub → Hugging Face → Colab training path
+        """# Verified GitHub → Colab → Hugging Face training path
 
 This notebook proves the complete engineering chain with the first-place solution's
-Ettin-400M component:
+Ettin-400M component. It intentionally uses one model: the goal is to verify the
+method and infrastructure, not to reproduce the expensive six-model ensemble.
 
 1. clone public code from GitHub;
 2. install pinned dependencies without replacing Colab's CUDA Torch;
@@ -28,7 +29,7 @@ Required Secret: `KAGGLE_API_TOKEN`. Recommended Secret: read-only `HF_TOKEN`.""
     ),
     nbf.v4.new_code_cell(
         """REPOSITORY = "mingzhuoFUN/jigsaw-agile-community-rules"
-BRANCH = "main"
+GIT_REF = "agent/winner-style-colab-pipeline"
 WORKDIR = "/content/jigsaw-verified"
 DRIVE_OUTPUT_DIR = "/content/drive/MyDrive/jigsaw-verified-ettin"
 RUN_FULL_TRAINING = True"""
@@ -37,11 +38,11 @@ RUN_FULL_TRAINING = True"""
         """import os, shutil, subprocess
 
 clone_url = f"https://github.com/{REPOSITORY}.git"
-if os.path.isdir(f"{WORKDIR}/.git"):
-    subprocess.run(["git", "-C", WORKDIR, "pull", "--ff-only"], check=True)
-else:
-    shutil.rmtree(WORKDIR, ignore_errors=True)
-    subprocess.run(["git", "clone", "--depth", "1", "--branch", BRANCH, clone_url, WORKDIR], check=True)
+shutil.rmtree(WORKDIR, ignore_errors=True)
+subprocess.run(
+    ["git", "clone", "--depth", "1", "--branch", GIT_REF, clone_url, WORKDIR],
+    check=True,
+)
 os.chdir(WORKDIR)
 print("Commit:", subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip())"""
     ),
@@ -115,6 +116,19 @@ drive.mount("/content/drive")
 output_dir = Path(DRIVE_OUTPUT_DIR)
 output_dir.mkdir(parents=True, exist_ok=True)
 print("Persistent output:", output_dir)"""
+    ),
+    nbf.v4.new_code_cell(
+        """from first_place.data import build_training_frame
+
+training_frame = build_training_frame(data_dir, example_repeats=2, seed=3001)
+print("Constructed training rows:", len(training_frame))
+print(training_frame["source"].value_counts())
+print(training_frame["rule_violation"].value_counts())
+assert training_frame[["body", "rule"]].notna().all().all()
+assert training_frame["body"].str.len().gt(0).all()
+assert training_frame["rule"].str.len().gt(0).all()
+assert training_frame["rule_violation"].isin([0, 1]).all()
+print(training_frame.head(3))"""
     ),
     nbf.v4.new_code_cell(
         """# Real low-cost training gate; downloads the same pinned HF model used below.
