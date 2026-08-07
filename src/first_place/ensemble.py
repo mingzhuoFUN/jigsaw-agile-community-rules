@@ -18,6 +18,7 @@ DEFAULT_WEIGHTS = {
 
 
 def blend(input_dir: Path, output_path: Path, weights: dict[str, float]) -> pd.DataFrame:
+    # 允许只融合当前已经生成的预测文件，并重新归一化可用权重。
     available = {name: weight for name, weight in weights.items() if (input_dir / name).exists()}
     if not available:
         raise FileNotFoundError(f"No submission files found in {input_dir}")
@@ -28,6 +29,7 @@ def blend(input_dir: Path, output_path: Path, weights: dict[str, float]) -> pd.D
     for name, weight in normalized.items():
         current = pd.read_csv(input_dir / name)[["row_id", "rule_violation"]]
         current = current.rename(columns={"rule_violation": name})
+        # 按 row_id 对齐而不是依赖 CSV 行顺序；one_to_one 会同时检查重复 row_id。
         result = current if result is None else result.merge(current, on="row_id", validate="one_to_one")
 
     assert result is not None
@@ -49,4 +51,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

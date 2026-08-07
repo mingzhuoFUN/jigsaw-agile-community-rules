@@ -1,4 +1,4 @@
-"""Verified single-model training path for GitHub -> HF -> Colab -> Drive."""
+"""GitHub -> Hugging Face -> Colab -> Google Drive 单模型训练入口。"""
 
 from __future__ import annotations
 
@@ -18,12 +18,14 @@ from first_place.validation import validate_submission
 
 
 MODEL_ID = "jhu-clsp/ettin-encoder-400m"
+# 固定模型提交版本，防止 Hugging Face 仓库更新后结果发生漂移。
 MODEL_REVISION = "7662476d60abb071a5bd319c9f3074f3072c062d"
 
 
 def download_model(attempts: int = 4) -> Path:
     from huggingface_hub import snapshot_download
 
+    # 大模型下载可能因 Colab 网络抖动中断，采用递增等待时间自动重试。
     for attempt in range(1, attempts + 1):
         try:
             print(f"Downloading {MODEL_ID}@{MODEL_REVISION[:8]} ({attempt}/{attempts})", flush=True)
@@ -48,6 +50,7 @@ def run_training(data_dir: Path, output_dir: Path, smoke_rows: int) -> None:
     script = root / "scripts" / "winner" / "train_ettin_400m.py"
     output_dir.mkdir(parents=True, exist_ok=True)
     model_path = download_model()
+    # 通过环境变量向训练子进程传递路径和 smoke 配置，避免修改训练脚本常量。
     env = os.environ.copy()
     env.update(
         {
@@ -58,11 +61,13 @@ def run_training(data_dir: Path, output_dir: Path, smoke_rows: int) -> None:
             "TOKENIZERS_PARALLELISM": "false",
         }
     )
+    # Colab 需要在线下载模型；即使离线变量值为 "0"，部分依赖仍可能把它当成开启。
     for variable in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_DATASETS_OFFLINE"):
         env.pop(variable, None)
 
     command = [sys.executable, "-u", str(script), "--train_then_infer"]
     if smoke_rows:
+        # smoke 模式只验证训练和推理闭环，不保存体积较大的模型文件。
         command.append("--no_save")
 
     log_path = output_dir / "training.log"
@@ -78,6 +83,7 @@ def run_training(data_dir: Path, output_dir: Path, smoke_rows: int) -> None:
             bufsize=1,
         )
         assert process.stdout is not None
+        # 同时输出到 Colab 控制台和持久化日志，便于观察进度与排查失败。
         for line in process.stdout:
             print(line, end="", flush=True)
             log.write(line)
@@ -86,9 +92,11 @@ def run_training(data_dir: Path, output_dir: Path, smoke_rows: int) -> None:
     if return_code:
         raise SystemExit(f"Training failed with exit code {return_code}; see {log_path}")
 
+    # 训练成功后立即校验 submission，防止把错误产物写入 Google Drive。
     submission_path = output_dir / "submission7.csv"
     submission = validate_submission(submission_path, data_dir)
     training_frame = build_training_frame(data_dir, example_repeats=2, seed=3001)
+    # manifest 记录模型、数据和运行方式，为后续实验对比提供依据。
     manifest = {
         "completed_at_utc": datetime.now(timezone.utc).isoformat(),
         "model_id": MODEL_ID,
